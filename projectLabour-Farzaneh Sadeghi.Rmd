@@ -1,0 +1,163 @@
+---
+title: "project 3-Labor Force"
+author: "Farzaneh Sadeghi"
+date: "2025-01-14"
+output: html_document
+---
+
+# 1. Describe the data with (well-chosen!) statistics and graphics.
+
+```{r}
+summary(change)
+layout(matrix(1:2,nrow=1))
+hist(change$age)
+hist(change$nchange)
+hist(change$median_wage)
+hist(change$periods_income)
+
+```
+
+# 2. Model 1: A linear regression model based on the variables gender, occupation, age, periodsincome and medianwage. Interpret the estimated coefficients. Do women change the employer more often than men? Do blue collar workers change employees more often than white collar workers? Do persons with low income change employees more often than those with high income?
+```{r}
+# step 1: define variables
+nchange <- change$nchange; age <- change$age; gender <- factor(change$gender); m_wage <- change$median_wage; occupation <- factor(change$occupation); income<- change$periods_income
+
+# step 2: regression on all variables
+model1 <- lm(nchange ~ . , change)
+summary_model1 <- summary(model1)
+summary_model1 # all parameters (intercepts and coefficients) are significant at the level of 5% confidence.as the t-value of them are greater than 2.03 (critical value of t distribution) and also the p-value for them are smaller than 0.05. all parameters has the negative effect on the frequency of labor change.
+
+# step 3: change the employer for women and men
+b <- model1$coefficients
+x <- c(1 , 1, 1 , 1 , 1 , 1) # intercept, age, gender, median wage, occupation, periods_ income. 
+x_women <- c(1 , 0 , 1 , 0 , 0 , 0) # all parameter constant but gender 
+model1_women <- sum(b * x_women)
+model1_women
+x_men <- c(1 , 0 , 0 , 0 , 0 , 0)
+model1_men <- sum(b * x_men)
+model1_men
+
+result_gender <- data.frame (Model = c("model1_women","model1_men"),
+  Gender_beta = c(model1_women, model1_men))
+result_gender  # the estimator for women is 2.77924 which is smaller than the parameter for men which is equal to 3.039442. so the men change the employer more often than women.
+
+# step 4: change employees for the blue collar workers and white collar workers
+x_white_collar <- c(1 , 0 , 0 , 0 , 1 , 0) # all parameter constant but occupation
+model1_white_collar <- sum(b * x_white_collar)
+model1_white_collar
+x_blue_collar <- c(1 , 0 , 0 , 0 , 0 , 0)
+model1_blue_collar <- sum(b * x_blue_collar)
+model1_blue_collar
+result_occupation <- data.frame(Model = c("model1_white_collar","model1_blue_collar"),
+  occupation_beta = c(model1_white_collar, model1_blue_collar))
+result_occupation # the estimator for white collar worker is 2.833874 which is smaller than the parameter for blue collar worker which is equal to 3.039442. Blue collar workers change employees more often than white collar workers.
+
+# step 5: Do persons with low income change employees more often than those with high income
+x_high_income <- c(1 , 0 , 0 , 5 , 0 , 0) # all parameter constant but wage
+model1_high_income <- sum(b * x_high_income)
+model1_high_income
+x_low_income <- c(1 , 0 , 0 , 1 , 0 , 0)
+model1_low_income <- sum(b * x_low_income)
+model1_low_income
+result_income <- data.frame (Model = c("model1_low_income","model1_high_income"),
+  occupation_beta = c(model1_low_income, model1_high_income))
+result_income # the estimator for high income worker is 2.414482 which is smaller than the parameter for low income worker which is equal to 2.914450. low income worker change employees more often than high income worker.
+```
+
+# 3. Model 2: Expand Model 1 by additionally including the quadratic effect of periodsincome. Is this quadratic effect statistically significant? How can the coefficients of the variable periodsincome be interpreted? What effect does a change in periodsincome have when the other variables are held constant?
+
+```{r}
+income_squared <- income^2
+model2 <- lm(nchange~ gender+occupation +age + m_wage + income+ income_squared, change)
+summary_model2 <- summary(model2)
+summary_model2 
+# the quadratic effect is statistically significant at the level of 5% confidence.as the t-value is greater than 2.03 (critical value of t distribution) and also the p-value is smaller than 0.05. 
+
+#If periods_income increase 1 percent, the frequency of changing employers increase by 0.6% and it also decrease by 0.04*0.1% too.   
+
+b1 <- model2$coefficients
+y <- c(1 , 1, 1 , 1 , 1 , 1) #intercept, gender, occupation, age, median wage, income_period, income_squared
+y <- c(1 , 0 , 0 , 0 , 1 , 0.1) # income_period change other variables are constant
+model2 <- sum(b1 * y)
+model2 # change in periods_income have when the other variables are held constant
+
+```
+
+# 4. Model 3: Expand Model 2 by an interaction effect between occupation and gender. Is the interaction effect statistically significant? How can the coefficients of occupation and gender as well as the interaction effect in Model 3 be interpreted? Do women change employers more often than men? Does the answer depend on the fact whether the woman is a blue or a white collar worker?
+
+
+```{r}
+model3 <- lm(nchange ~ (gender*occupation)+age+income+m_wage)
+summary_model3 <- summary(model3)
+summary_model3 #The interaction effect statistically is not significant at the level of 5% confidence, because the t-value is greater than critical value and also p_value is smaller than 0.05. 
+# gender and occupation separately has negative effect on the frequency of employer change but the interaction of them has no effect on our model.
+b2 <- model3$coefficients
+z <- c(1 , 1, 1 , 1 , 1 , 1) #intercept, gender, occupation, age, income, median wage, interaction 
+z_women <- c(1 , 1 , 0 , 0 , 0 , 0)
+model3_women <- sum(b2 * z_women)
+model3_women
+z_men <- c(1 , 0 , 0 , 0 , 0 , 0)
+model3_men <- sum(b2 * z_men)
+model3_men
+result_model3 <- data.frame (Mode3 = c("model3_women","model3_men"),
+  gender_beta1 = c(model3_women, model3_men))
+result_model3 # the estimator for women is 2.920492 which is smaller than the parameter for men which is equal to 3.284413. men change employees more often than women.
+z_women_white <- c(1 , 1 , 1 , 0 , 0 , 0)
+model3_white_women <- sum(b2 * z_women_white)
+model3_white_women
+z_women_blue <- z_women
+model3_blue_women <- model3_women
+model3_blue_women
+result_model3_women_occupation <- data.frame (Mode2 = c("model3_white_women","model3_blue_women"),
+  gender_beta1 = c(model3_white_women, model3_blue_women))
+result_model3_women_occupation # yes it depend on occupation. as the parameter for white collar women is smaller than blue collar women.
+```
+
+# 5. Using Model 3, predict the number of employer changes for a female white collar worker who was 30 years old in 1986, who had a positive income during 10 years, with the median wage falling into the lowest wage category.
+
+```{r}
+b2 <- model3$coefficients
+x_predict <- c(1 , 1, 1 , 30 , 10 , 1, 1)
+model3_predict <- sum(b2 * x_predict)
+model3_predict
+```
+# 6.Compare the three models via Adjusted R2. Which model is preferred?
+
+```{r}
+adj_r2_model1 <- summary_model1$adj.r.squared
+adj_r2_model2 <- summary_model2$adj.r.squared
+adj_r2_model3 <- summary_model3$adj.r.squared
+results_adj_r2 <- data.frame(Mode4 = c("model1", "model2", "model3"),
+  Adjusted_R2 = c(adj_r2_model1, adj_r2_model2, adj_r2_model3))
+results_adj_r2
+# the model 2 (quadratic income) is preferred. 
+```
+# 7.Perform residual diagnostics. Based on these diagnostics, which results do you trust?
+
+```{r}
+model1 <- lm(nchange ~ . , change)
+residual_model1 <- resid(model1)
+model2 <- lm(nchange~ gender+occupation +age + m_wage + income+ income_squared, change)
+residual_model2 <- resid(model2)
+model3 <- lm(nchange ~ (gender*occupation)+age+income+m_wage)
+residual_model3 <- resid(model3)
+
+library(moments)
+library(tseries)
+library(lmtest)
+results_normality_curve <- data.frame(Mode5 = c("model1", "model2", "model3"),
+  skewness = c(skewness(residual_model1), skewness(residual_model2), skewness(residual_model3)), kurtosis=c(kurtosis(residual_model1),
+kurtosis(residual_model2), kurtosis(residual_model3)))
+results_normality_curve #All three models show similar results with skewness and kurtosis, implying that none fully satisfies the assumption of normality in residuals. Model 3 is marginally better in both metrics.
+library(tseries)
+jarque.test(resid(model1))
+jarque.test(resid(model1))
+jarque.test(resid(model1))
+library(lmtest)
+bptest(model1)
+bptest(model2)
+bptest(model3)
+alpha <- qchisq(0.95, 7)
+alpha
+```
+
